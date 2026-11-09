@@ -62,11 +62,13 @@ dump "shipped doctor terminal output" cat "$PROOF/doctor.log"
 
 # ---------------------------------------------------------------- verify
 head_step "STAGE verify"
+# The shipped note() renderer wraps the warning across terminal lines, so match
+# against the whole log rather than the single matched line.
 WARN_MSG="$(grep -F "Could not inspect stale OpenClaw updater launchd jobs" "$PROOF/doctor.log" || true)"
 EXIT_OK=0; PERM_OK=0; NOT_CHECKED=0
 [ -n "$WARN_MSG" ] && NOT_CHECKED=1
-echo "$WARN_MSG" | grep -qF "exit 1" && EXIT_OK=1
-echo "$WARN_MSG" | grep -qF "Operation not permitted" && PERM_OK=1
+grep -qF "exit 1" "$PROOF/doctor.log" && EXIT_OK=1
+grep -qF "Operation not permitted" "$PROOF/doctor.log" && PERM_OK=1
 
 say "warning_present=$NOT_CHECKED exit_1_detail=$EXIT_OK operation_not_permitted_detail=$PERM_OK"
 if [ "$NOT_CHECKED" = "1" ] && [ "$EXIT_OK" = "1" ] && [ "$PERM_OK" = "1" ]; then
