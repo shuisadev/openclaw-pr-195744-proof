@@ -1,0 +1,53 @@
+name: shipped-macos-doctor-proof
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "openclaw branch/ref to prove (default: PR #195744 head branch)"
+        required: false
+        default: "fix/macos-stale-updater-job-warning-366"
+
+jobs:
+  proof:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout proof repo (scripts)
+        uses: actions/checkout@v4
+
+      - name: Checkout openclaw at PR ref
+        uses: actions/checkout@v4
+        with:
+          repository: shuisadev/openclaw
+          ref: ${{ inputs.ref }}
+          path: openclaw
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install dependencies
+        working-directory: openclaw
+        run: |
+          corepack enable || true
+          node -v
+          corepack pnpm install --frozen-lockfile
+
+      - name: Run shipped macOS Doctor proof (real launchctl failure)
+        env:
+          PROOF_REPO_DIR: ${{ github.workspace }}
+          PKG: ${{ github.workspace }}/openclaw
+        working-directory: openclaw
+        run: |
+          chmod +x "$PROOF_REPO_DIR/run-proof.sh"
+          set -o pipefail
+          bash "$PROOF_REPO_DIR/run-proof.sh" 2>&1 | tee "$PROOF_REPO_DIR"/proof-output.txt
+
+      - name: Upload proof output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: proof-output
+          path: ${{ github.workspace }}/proof-output.txt
